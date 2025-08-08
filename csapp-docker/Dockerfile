@@ -4,7 +4,9 @@ ARG code_server_version=4.14.1
 ARG cpptools_version=1.16.3
 ARG office_version=3.1.6
 
-RUN cp /etc/apt/sources.list /etc/apt/sources.backup.list
+# RUN cp /etc/apt/sources.list /etc/apt/sources.backup.list
+# 可选：使用阿里源替换默认源
+RUN sed -i 's|http://archive.ubuntu.com/ubuntu/|http://mirrors.aliyun.com/ubuntu/|g' /etc/apt/sources.list
 
 # Please comment this line if you are not using Tencent Cloud network
 # COPY sources.list /etc/apt/sources.list

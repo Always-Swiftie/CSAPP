@@ -1,7 +1,7 @@
 ################
 CS:APP Shell Lab
 ################
-
+ hello
 Files:
 
 Makefile	# Compiles your shell program and runs the tests
