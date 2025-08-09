@@ -143,6 +143,7 @@ NOTES:
  *   Rating: 1
  */
 int bitXor(int x, int y) {
+    // 主要是德摩根律的运用
   return ~((~x)&(~y)) & ~(x&y);
 }
 /* 
@@ -152,8 +153,8 @@ int bitXor(int x, int y) {
  *   Rating: 1
  */
 int tmin(void) {
-
-  return 2;
+    //补码的最小值是10000....(32bits),注意不是1111...(32bits),后者是-1,让1左移31位即可
+  return 1<<31;
 
 }
 //2
@@ -165,7 +166,12 @@ int tmin(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-  return 2;
+  // Tmax即为补码的最大值,左边判断的是x是否为Tmax
+  // Tmax 0111.... 满足 Tmax + 1 = 10000....(-Tmax),即为正溢出,再对1000...按位取反之后,得到的还是Tmax
+  // 右边是验证x != -1 (111....)这种特殊情况,因为-1(111...) + 1 变成00000,也满足x + 1 ^ x == 1 .
+  //第一个条件：~(x+1) == x
+  //第二个条件：x+1 != 0
+  return (!((~(x + 1)) ^ x)) & (!!((x + 1) ^ 0x0));
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -176,7 +182,11 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  return 2;
+    int A = 0xA;
+    int AA = A | (A << 4); 
+    int AAAA = AA | (AA << 8);
+    int mask = AAAA | (AAAA << 16);
+    return !((x & mask) ^ mask);
 }
 /* 
  * negate - return -x 
