@@ -182,9 +182,15 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
+    //0xA 是二进制 1010，其中奇数位是 1，偶数位是 0。
     int A = 0xA;
-    int AA = A | (A << 4); 
-    int AAAA = AA | (AA << 8);
+    //(A << 4) 把 1010 左移 4 位，得到 1010 0000。
+    int AA = A | (A << 4);     //A | (A << 4) 就是：1010 1010 (AA)
+    //(AA << 8) 得到 1010 1010 0000 0000
+    // 再用 0000 0000 1010 1010 
+    // |    1010 1010 0000 0000
+    int AAAA = AA | (AA << 8); //得到1010 1010 1010 1010 (AAAA)
+    //下面同理
     int mask = AAAA | (AAAA << 16);
     return !((x & mask) ^ mask);
 }
