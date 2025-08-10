@@ -202,7 +202,9 @@ int allOddBits(int x) {
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+  // 对于正数补码,将其按位取反之后 + 1 就可以得到它的相反值
+  // e.g 1 = 0000...01 ; ~1 = 1111..10  
+  return ~x + 1;
 }
 //3
 /* 
@@ -214,8 +216,24 @@ int negate(int x) {
  *   Max ops: 15
  *   Rating: 3
  */
-int isAsciiDigit(int x) {
-  return 2;
+int isAsciiDigit(int x) { 
+  
+  // 1. 检查是否为 ASCII 数字的高两位是 00（ASCII 数字的二进制前两位是 00 11）
+  //    将 x 右移 6 位，如果结果不是 0，说明高位不符合要求
+  int a = x >> 6;
+  int cond1 = !a; // cond1 = 1 表示高 2 位是 00
+  // 2. 检查 ASCII 数字的高 4 位是否是二进制 0011 (即十进制 3)
+  //    将 x 右移 4 位，得到高 4 位；与 0b0011 比较是否相等
+  int b = x >> 4;
+  int cond2 = !(b ^ 0b11); // cond2 = 1 表示高 4 位是 0011
+  // 3. 检查低 4 位是否小于十进制 10
+  //    先取低 4 位 (0xF = 1111b)，再减去 0xA，看是否为负数
+  int c = x & (0xF); // 取低 4 位
+  int res = c + negate(0xA); // 等价于 c - 0xA
+  int cond3 = !!(res >> 31); // 如果为负数，则最高位是 1 → cond3 = 1
+  // 只有 cond1、cond2、cond3 都为 1 时，才是 '0' ~ '9'
+  return cond1 & cond2 & cond3;
+
 }
 /* 
  * conditional - same as x ? y : z 
@@ -224,8 +242,38 @@ int isAsciiDigit(int x) {
  *   Max ops: 16
  *   Rating: 3
  */
+//功能：如果 x ≠ 0，则返回 y，否则返回 z
 int conditional(int x, int y, int z) {
-  return 2;
+
+
+  //1. !!x : 归一化为布尔值（0 → 0，非 0 → 1）
+  //e.g !!5 = 1, !!0 = 0
+  int mask = ((!!x) << 31) >> 31;
+  /*
+     2. mask 的构造：
+        (!!x)   → 1 或 0
+        << 31   → 如果是 1 则变成 0x80000000，0 则是 0x00000000
+        >> 31   → 进行算术右移（保留符号位）
+                   如果是 1 → 变成全 1 (0xFFFFFFFF)
+                   如果是 0 → 变成全 0 (0x00000000)
+        所以：
+        当 x ≠ 0 → mask = 0xFFFFFFFF
+        当 x = 0 → mask = 0x00000000
+  */
+  return ((~mask) & z ) | (mask & y);
+  /*
+     如果 x ≠ 0：
+         mask = 全 1 → (~mask) = 全 0
+         (~mask) & z = 0
+         (mask) & y = y
+         → 返回 y
+     
+     如果 x = 0：
+         mask = 全 0 → (~mask) = 全 1
+         (~mask) & z = z
+         (mask) & y = 0
+         → 返回 z
+  */
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -235,7 +283,13 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  int a = x >> 31;
+  int b = y >> 31;
+  int c = a ^ b;
+  int case1 = c & a;
+  int case2 = ~c & ( ~((y + (~x + 1)) >> 31));
+  int result = case1 | case2;
+    return !!result;
 }
 //4
 /* 
@@ -247,7 +301,12 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+    int bit16 = x | ( x >> 16);
+    int bit8 = bit16 | (bit16 >> 8);
+    int bit4 = bit8 | (bit8 >> 4);
+    int bit2 = bit4 | (bit4 >> 2);
+    int bit1 = bit2 | (bit2 >> 1);
+    return (bit1 & 1) ^ 1;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -262,7 +321,22 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+  int b16, b8, b4, b2, b1, b0;
+    int sign = x >> 31;
+    x = (sign & ~x) | (~sign & x);
+
+    b16 = !!(x >> 16) << 4;
+    x = x >> b16;
+    b8 = !!(x >> 8) << 3;
+    x = x >> b8;
+    b4 = !!(x >> 4) << 2;
+    x = x >> b4;
+    b2 = !!(x >> 2) << 1;
+    x = x >> b2;
+    b1 = !!(x >> 1);
+    x = x >> b1;
+    b0 = x;
+    return b16 + b8 + b4 + b2 + b1 + b0 + 1;
 }
 //float
 /* 
@@ -277,7 +351,24 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+  int exp = (uf >> 23) & 0xFF;
+    int sign = uf & (1 << 31);
+    if (exp == 0xFF) {
+        return uf;
+    }
+
+    if (exp == 0x0) {
+        return (uf << 1) | sign;
+    }
+
+    exp = exp + 1;
+    if (exp == 0xFF) {
+        return 0x7F800000 | sign;
+    }
+    else {
+        int frac = uf & 0x7FFFFF;
+        return (frac | exp << 23) | sign;
+    }
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -292,7 +383,25 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+  int exp = (uf >> 23) & 0xFF;
+    int frac = uf & 0x7FFFFF;
+    int sign = uf & (1 << 31);  // negative 0x80000000, positive 0x0.
+    int frac1 = frac | 0x800000;  // Add the hidden 1 in front of frac
+    int biasedExp = exp - 127; // E = e - Bias, Bias = 127 = 0x7F, -bias = 0xFFFFFF81
+
+    if (exp == 0xFF) return 0x80000000u;  // if out of range, return 0x80000000
+
+    if (exp == 0x0) return 0;  // if de-norm number, means its range is (-1, 1)
+
+    if (biasedExp > 31) return 0x80000000;
+    else if (biasedExp < 0) return 0;
+
+    if (biasedExp > 23) frac1 <<= (biasedExp - 23);
+    else frac1 >>= (23 - biasedExp);
+
+    if (sign) return ~frac1 + 1;  // if negative number
+    else if (frac1 >> 31) return 0x80000000;  // if frac1 overflows, return 0x80000000;
+    else return frac1;
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
@@ -308,5 +417,8 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+    int exp = x + 127;
+    if (exp <= 0) return 0;
+    if (exp >= 255) return 0xff << 23;
+    return exp << 23;
 }
